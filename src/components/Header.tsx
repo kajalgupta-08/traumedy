@@ -21,7 +21,7 @@ const Header = ({ showBackButton = false, title }: HeaderProps) => {
           </button>
         )}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[hsl(var(--traumedy-blue))] rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-[hsl(var(--traumedy-blue))] to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
             <span className="text-white text-sm font-bold">T</span>
           </div>
           <span className="text-[hsl(var(--traumedy-text))] font-semibold text-lg">
