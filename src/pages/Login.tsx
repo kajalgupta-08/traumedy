@@ -3,18 +3,32 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
+import { supabase } from "../../traumedy-backend/src/utils/supabaseClient";
+
 
 const Login = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // After login, redirect to guidelines
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password
+    });
+
+    if (error) {
+      console.error("Login failed:", error.message);
+      alert("Login failed: " + error.message);
+      return;
+    }
+
+    localStorage.setItem("token", data.session?.access_token || "");
     navigate("/guidelines?type=user");
   };
 
@@ -28,10 +42,9 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-[hsl(var(--traumedy-darkest))] flex flex-col">
       <Header showBackButton={true} />
-      
+
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-md mx-auto">
-          {/* Welcome Title */}
           <h1 className="text-3xl font-bold text-[hsl(var(--traumedy-text))] text-center mb-8">
             Welcome back
           </h1>
@@ -63,20 +76,19 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Input
-                type="text"
-                name="username"
-                placeholder="Username"
-                value={formData.username}
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={formData.email}
                 onChange={handleInputChange}
                 className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
                 required
               />
             </div>
-            
+
             <div>
               <Input
                 type="password"
@@ -106,7 +118,6 @@ const Login = () => {
             </Button>
           </form>
 
-          {/* Anonymous Access Option */}
           <div className="mt-6 text-center">
             <button
               onClick={() => navigate("/guidelines?type=anonymous")}

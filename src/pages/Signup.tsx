@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
+import { supabase } from "../../traumedy-backend/src/utils/supabaseClient";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -14,11 +15,42 @@ const Signup = () => {
     confirmPassword: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // After signup, redirect to anonymous guidelines
-    navigate("/guidelines?type=anonymous");
-  };
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    // 1️⃣ Signup via Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (error || !data.user) {
+      alert("Signup failed: " + error?.message);
+      return;
+    }
+
+    // 2️⃣ Insert into users table
+    const { error: dbError } = await supabase.from("users").insert([
+      {
+        id: data.user.id,
+        email: formData.email,
+        username: formData.username,
+        role: "user",
+      }
+    ]);
+
+    if (dbError) {
+      console.error("DB insert error:", dbError.message);
+    }
+
+    alert("Registration successful! Please log in.");
+    navigate("/login");
+  }; // <-- ✅ THIS was missing
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -30,15 +62,12 @@ const Signup = () => {
   return (
     <div className="min-h-screen bg-[hsl(var(--traumedy-darkest))] flex flex-col">
       <Header showBackButton={true} />
-      
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-md mx-auto">
-          {/* Welcome Title */}
           <h1 className="text-3xl font-bold text-[hsl(var(--traumedy-text))] text-center mb-8">
             Join our community
           </h1>
 
-          {/* Tab Switcher */}
           <div className="flex mb-6 bg-[hsl(var(--traumedy-darker))] rounded-lg p-1">
             <button
               onClick={() => {
@@ -65,56 +94,43 @@ const Signup = () => {
             </button>
           </div>
 
-          {/* Signup Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Input
-                type="text"
-                name="username"
-                placeholder="Username"
-                value={formData.username}
-                onChange={handleInputChange}
-                className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
-                required
-              />
-            </div>
-            
-            <div>
-              <Input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
-                required
-              />
-            </div>
-            
-            <div>
-              <Input
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
-                required
-              />
-            </div>
-            
-            <div>
-              <Input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm Password"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
-                required
-              />
-            </div>
-
+            <Input
+              type="text"
+              name="username"
+              placeholder="Username"
+              value={formData.username}
+              onChange={handleInputChange}
+              className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
+              required
+            />
+            <Input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={handleInputChange}
+              className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
+              required
+            />
+            <Input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleInputChange}
+              className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
+              required
+            />
+            <Input
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              className="w-full py-4 px-4 traumedy-input placeholder:text-[hsl(var(--traumedy-text-muted))]"
+              required
+            />
             <Button
               type="submit"
               className="w-full py-4 traumedy-button font-medium text-lg"
@@ -123,7 +139,6 @@ const Signup = () => {
             </Button>
           </form>
 
-          {/* Anonymous Access Option */}
           <div className="mt-6 text-center">
             <button
               onClick={() => navigate("/guidelines?type=anonymous")}
