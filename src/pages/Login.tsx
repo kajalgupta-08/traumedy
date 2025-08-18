@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
 import { supabase } from "../../traumedy-backend/src/utils/supabaseClient";
 
-
 const Login = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
@@ -28,7 +27,13 @@ const Login = () => {
       return;
     }
 
+    // 🔹 Log the user object for debugging
+    console.log("Logged in user:", data.user);
+
+    // ✅ Store token and email for later use
     localStorage.setItem("token", data.session?.access_token || "");
+    localStorage.setItem("email", data.user?.email || ""); // <-- ensures Guidelines can use it
+
     navigate("/guidelines?type=user");
   };
 
