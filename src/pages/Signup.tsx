@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
-import { supabase } from "../../traumedy-backend/src/utils/supabaseClient";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -23,34 +22,16 @@ const Signup = () => {
       return;
     }
 
-    // 1️⃣ Signup via Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-    });
-
-    if (error || !data.user) {
-      alert("Signup failed: " + error?.message);
-      return;
+    // Simple validation for demo - in production use proper authentication
+    if (formData.email && formData.password && formData.username) {
+      localStorage.setItem("token", "demo-token");
+      localStorage.setItem("email", formData.email);
+      alert("Registration successful! You can now log in.");
+      navigate("/login");
+    } else {
+      alert("Please fill in all fields");
     }
-
-    // 2️⃣ Insert into users table
-    const { error: dbError } = await supabase.from("users").insert([
-      {
-        id: data.user.id,
-        email: formData.email,
-        username: formData.username,
-        role: "user",
-      }
-    ]);
-
-    if (dbError) {
-      console.error("DB insert error:", dbError.message);
-    }
-
-    alert("Registration successful! Please log in.");
-    navigate("/login");
-  }; // <-- ✅ THIS was missing
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({

@@ -58,9 +58,58 @@ const Guidelines = () => {
     },
   ];
 
+<<<<<<< HEAD
   const handleAgree = () => {
     navigate("/topics");
   };
+=======
+  const handleAgree = async () => {
+  const email = localStorage.getItem("email");
+
+  if (!topic || !mode) {
+    alert("Please select a topic and mode before proceeding.");
+    return;
+  }
+
+  if (!email) {
+    alert("Email not found. Please log in again.");
+    return;
+  }
+
+  // 🔹 Log the data being sent
+  console.log("Sending match request:", { email, topic, mode });
+
+  try {
+    const res = await fetch("http://localhost:5000/api/match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, topic, mode }),
+    });
+
+    // 🔹 Log the response status
+    console.log("Match API status:", res.status);
+
+    if (!res.ok) {
+      throw new Error(`Server error: ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    // 🔹 Log the response data
+    console.log("Match API Response:", data);
+
+    if (data.matched) {
+      const route = mode === 'video' ? `/video/${data.roomId}` : `/room/${data.roomId}`;
+      navigate(route);
+    } else {
+      navigate("/waiting", { state: { topic, mode } });
+    }
+  } catch (err) {
+    console.error("Error matching:", err);
+    alert("There was an error connecting to the match server.");
+  }
+};
+>>>>>>> 874c9aae0a585a09354bfe30c9b26763f06da160
 
 
 
@@ -100,8 +149,51 @@ const Guidelines = () => {
             })}
           </div>
 
+<<<<<<< HEAD
           {/* Action Button */}
           <div className="text-center">
+=======
+          {/* Topic Selection */}
+          <div className="mb-4">
+            <label className="block mb-2 text-[hsl(var(--traumedy-text))]">
+              Select Topic
+            </label>
+            <select
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="w-full p-2 rounded-lg bg-[hsl(var(--traumedy-dark))] text-[hsl(var(--traumedy-text))] border border-[hsl(var(--traumedy-border))]"
+            >
+              <option value="">-- Choose a Topic --</option>
+              <option value="anxiety">Anxiety & Panic</option>
+              <option value="depression">Depression & Mood</option>
+              <option value="stress">Stress & Burnout</option>
+              <option value="trauma">Trauma & PTSD</option>
+              <option value="grief">Grief & Loss</option>
+              <option value="abuse">Abuse & Recovery</option>
+              <option value="relationships">Relationships</option>
+              <option value="general">General Support</option>
+            </select>
+          </div>
+
+          {/* Mode Selection */}
+          <div className="mb-6">
+            <label className="block mb-2 text-[hsl(var(--traumedy-text))]">
+              Select Mode
+            </label>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              className="w-full p-2 rounded-lg bg-[hsl(var(--traumedy-dark))] text-[hsl(var(--traumedy-text))] border border-[hsl(var(--traumedy-border))]"
+            >
+              <option value="">-- Choose a Mode --</option>
+              <option value="text">Text Chat</option>
+              <option value="video">Video Call</option>
+            </select>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-4">
+>>>>>>> 874c9aae0a585a09354bfe30c9b26763f06da160
             <Button
               onClick={handleAgree}
               className="w-full py-4 traumedy-button font-medium text-lg"

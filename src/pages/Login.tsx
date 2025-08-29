@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
-import { supabase } from "../../traumedy-backend/src/utils/supabaseClient";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -16,16 +15,15 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: formData.email,
-      password: formData.password
-    });
-
-    if (error) {
-      console.error("Login failed:", error.message);
-      alert("Login failed: " + error.message);
-      return;
+    // Simple validation for demo - in production use proper authentication
+    if (formData.email && formData.password) {
+      localStorage.setItem("token", "demo-token");
+      localStorage.setItem("email", formData.email);
+      navigate("/guidelines?type=user");
+    } else {
+      alert("Please fill in all fields");
     }
+<<<<<<< HEAD
 
     // 🔹 Log the user object for debugging
     console.log("Logged in user:", data.user);
@@ -35,6 +33,8 @@ const Login = () => {
     localStorage.setItem("email", data.user?.email || ""); // <-- ensures Guidelines can use it
 
     navigate("/guidelines");
+=======
+>>>>>>> 874c9aae0a585a09354bfe30c9b26763f06da160
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
