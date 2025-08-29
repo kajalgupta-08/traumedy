@@ -9,8 +9,9 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Guidelines from "./pages/Guidelines";
 import Chat from "./pages/Chat";
+import VideoCall from "./pages/VideoCall";
 import NotFound from "./pages/NotFound";
-import WaitingRoom from "./pages/WaitingRoom"; // ⬅ New import
+import WaitingRoom from "./pages/WaitingRoom";
 
 const queryClient = new QueryClient();
 
@@ -26,9 +27,9 @@ const App = () => (
           <Route path="/signup" element={<Signup />} />
           <Route path="/guidelines" element={<Guidelines />} />
           <Route path="/chat" element={<Chat />} />
-          {/* WaitingRoom route */}
           <Route path="/waiting" element={<WaitingRoom />} />
           <Route path="/room/:roomId" element={<Chat />} />
+          <Route path="/video/:roomId" element={<VideoCall />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

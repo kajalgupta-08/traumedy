@@ -101,7 +101,8 @@ const Guidelines = () => {
     console.log("Match API Response:", data);
 
     if (data.matched) {
-      navigate(`/room/${data.roomId}`);
+      const route = mode === 'video' ? `/video/${data.roomId}` : `/room/${data.roomId}`;
+      navigate(route);
     } else {
       navigate("/waiting", { state: { topic, mode } });
     }
@@ -160,9 +161,14 @@ const Guidelines = () => {
               className="w-full p-2 rounded-lg bg-[hsl(var(--traumedy-dark))] text-[hsl(var(--traumedy-text))] border border-[hsl(var(--traumedy-border))]"
             >
               <option value="">-- Choose a Topic --</option>
-              <option value="loss">Loss</option>
-              <option value="abuse">Abuse</option>
-              <option value="anxiety">Anxiety</option>
+              <option value="anxiety">Anxiety & Panic</option>
+              <option value="depression">Depression & Mood</option>
+              <option value="stress">Stress & Burnout</option>
+              <option value="trauma">Trauma & PTSD</option>
+              <option value="grief">Grief & Loss</option>
+              <option value="abuse">Abuse & Recovery</option>
+              <option value="relationships">Relationships</option>
+              <option value="general">General Support</option>
             </select>
           </div>
 
