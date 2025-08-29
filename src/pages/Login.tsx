@@ -34,7 +34,7 @@ const Login = () => {
     localStorage.setItem("token", data.session?.access_token || "");
     localStorage.setItem("email", data.user?.email || ""); // <-- ensures Guidelines can use it
 
-    navigate("/guidelines?type=user");
+    navigate("/guidelines");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,7 +125,7 @@ const Login = () => {
 
           <div className="mt-6 text-center">
             <button
-              onClick={() => navigate("/guidelines?type=anonymous")}
+              onClick={() => navigate("/guidelines")}
               className="text-[hsl(var(--traumedy-text-muted))] hover:text-[hsl(var(--traumedy-text))] text-sm transition-colors"
             >
               Or proceed anonymously

@@ -10,7 +10,7 @@ const server = http.createServer(app);
 // ===================== MIDDLEWARE =====================
 app.use(
   cors({
-    origin: "http://localhost:8080",
+    origin: ["http://localhost:8080", "http://localhost:5173", "http://localhost:3000", "http://localhost:4173"],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -24,8 +24,8 @@ const users = [
 
 const waitingUsers = []; // REST matching
 const waitingPool = []; // Real-time waiting room
-const rooms = {};        // roomId -> socketIds
-const roomHistory = {};  // roomId -> messages
+const rooms = {};       // roomId -> socketIds
+const roomHistory = {}; // roomId -> messages
 
 // ===================== AUTH ROUTES =====================
 app.post("/api/signup", (req, res) => {
@@ -57,22 +57,52 @@ app.post("/api/login", (req, res) => {
 });
 
 // ===================== REST MATCHING =====================
+const activeMatches = new Map(); // Store roomId for matched pairs
+
 app.post("/api/match", (req, res) => {
   const { email, topic, mode } = req.body;
   if (!email || !topic || !mode)
     return res.status(400).json({ error: "Missing parameters" });
 
+  console.log(`Match request: ${email} for ${topic}/${mode}`);
+
+  // Check if user is already in an active match
+  const existingMatch = Array.from(activeMatches.entries()).find(([roomId, users]) => 
+    users.includes(email)
+  );
+  
+  if (existingMatch) {
+    console.log(`User ${email} already in room ${existingMatch[0]}`);
+    return res.json({
+      matched: true,
+      roomId: existingMatch[0]
+    });
+  }
+
+  // Remove any existing entry for this user to prevent duplicates
+  const existingIndex = waitingUsers.findIndex(u => u.email === email);
+  if (existingIndex !== -1) {
+    waitingUsers.splice(existingIndex, 1);
+  }
+
   const matchIndex = waitingUsers.findIndex(
-    (u) => u.topic === topic && u.mode === mode && u.email !== email
+    (u) => u.topic === topic && u.mode === mode
   );
 
   if (matchIndex !== -1) {
     const matchedUser = waitingUsers.splice(matchIndex, 1)[0];
     const roomId = uuidv4();
+    
+    // Store the match so both users get same room
+    activeMatches.set(roomId, [email, matchedUser.email]);
+    
+    console.log(`NEW MATCH: ${email} <-> ${matchedUser.email} in room ${roomId}`);
+    
     return res.json({ matched: true, roomId, partnerEmail: matchedUser.email });
   }
 
   waitingUsers.push({ email, topic, mode, joinedAt: Date.now() });
+  console.log(`User ${email} waiting. Queue: ${waitingUsers.length}`);
   return res.json({ matched: false });
 });
 
@@ -82,7 +112,7 @@ app.get("/health", (req, res) => {
 
 // ===================== SOCKET.IO REAL-TIME CHAT =====================
 const io = new Server(server, {
-  cors: { origin: "http://localhost:8080", credentials: true },
+  cors: { origin: ["http://localhost:8080", "http://localhost:5173", "http://localhost:3000", "http://localhost:4173"], credentials: true },
 });
 
 io.on("connection", (socket) => {
@@ -90,72 +120,73 @@ io.on("connection", (socket) => {
 
   // --------------------- WAITING ROOM ---------------------
   socket.on("joinWaitingRoom", ({ user, topic, mode }) => {
-    waitingPool.push({ socketId: socket.id, user, topic, mode });
-    socket.username = user;
-
-    // Try to find a match
+    console.log(`User ${user} joining waiting room for topic: ${topic}, mode: ${mode}`);
+    
+    // Try to find a match first
     const matchIndex = waitingPool.findIndex(
       (u) => u.topic === topic && u.mode === mode && u.socketId !== socket.id
     );
 
     if (matchIndex !== -1) {
       const matchedUser = waitingPool.splice(matchIndex, 1)[0];
-      waitingPool.splice(waitingPool.findIndex(u => u.socketId === socket.id), 1);
+      console.log(`Match found! ${user} matched with ${matchedUser.user}`);
 
       const roomId = uuidv4();
       rooms[roomId] = [socket.id, matchedUser.socketId];
       roomHistory[roomId] = [];
 
-      // ----------------- Join both users -----------------
+      // Verify both sockets exist
+      const matchedSocket = io.sockets.sockets.get(matchedUser.socketId);
+      if (!matchedSocket) {
+        console.log(`Matched user socket ${matchedUser.socketId} not found, adding back to waiting pool`);
+        waitingPool.push({ socketId: socket.id, user, topic, mode });
+        return;
+      }
+
+      // Both join the room
       socket.join(roomId);
-      io.sockets.sockets.get(matchedUser.socketId).join(roomId);
+      matchedSocket.join(roomId);
 
-      // ----------------- System messages -----------------
-      const systemMsg1 = { sender: "System", text: `${user} joined the chat` };
-      const systemMsg2 = { sender: "System", text: `${matchedUser.user} joined the chat` };
-      roomHistory[roomId].push(systemMsg1, systemMsg2);
+      // System messages
+      const systemMsg = { sender: "System", text: `You have been matched! Start your conversation.`, userId: "system" };
+      roomHistory[roomId].push(systemMsg);
 
-      io.to(roomId).emit("message", systemMsg1);
-      io.to(roomId).emit("message", systemMsg2);
-
-      // ----------------- Notify clients about match -----------------
-      io.to(socket.id).emit("matched", { roomId, partner: matchedUser.user, history: roomHistory[roomId] });
-      io.to(matchedUser.socketId).emit("matched", { roomId, partner: user, history: roomHistory[roomId] });
+      // Notify both clients about match with explicit socket targeting
+      socket.emit("matched", { roomId, partner: matchedUser.user, history: roomHistory[roomId] });
+      matchedSocket.emit("matched", { roomId, partner: user, history: roomHistory[roomId] });
+      
+      console.log(`Both users notified of match. Room: ${roomId}`);
+    } else {
+      // No match found, add to waiting pool
+      waitingPool.push({ socketId: socket.id, user, topic, mode });
+      socket.username = user;
+      console.log(`No match found for ${user}. Added to waiting pool. Pool size: ${waitingPool.length}`);
     }
   });
 
-  // --------------------- JOIN ROOM (OPTIONAL) ---------------------
-  socket.on("joinRoom", ({ roomId, user }) => {
+  // --------------------- JOIN ROOM ---------------------
+  socket.on("joinRoom", ({ roomId, user, userId }) => {
     socket.join(roomId);
-    const msg = { sender: "System", text: `${user} joined the chat` };
+
+    // Send chat history to joining user
+    socket.emit("matched", { roomId, partner: "Stranger", history: roomHistory[roomId] || [] });
+
+    // System join message
+    const joinMsg = { sender: "System", text: `${user} joined the chat`, userId: "system" };
     roomHistory[roomId] = roomHistory[roomId] || [];
-    roomHistory[roomId].push(msg);
-    socket.to(roomId).emit("message", msg);
+    roomHistory[roomId].push(joinMsg);
+    socket.to(roomId).emit("message", joinMsg);
   });
 
-  // --------------------- SEND MESSAGE ---------------------// SEND MESSAGE
-socket.on("sendMessage", ({ roomId, sender, text, userId }) => {
-  const msg = { sender, text, userId };
-  roomHistory[roomId] = roomHistory[roomId] || [];
-  roomHistory[roomId].push(msg);
+  // --------------------- SEND MESSAGE ---------------------
+  socket.on("sendMessage", ({ roomId, sender, text, userId, socketId }) => {
+    const msg = { sender, text, userId, socketId: socket.id };
+    roomHistory[roomId] = roomHistory[roomId] || [];
+    roomHistory[roomId].push(msg);
 
-  // Emit to everyone in the room
-  io.to(roomId).emit("message", msg);
-});
-
-// JOIN ROOM
-socket.on("joinRoom", ({ roomId, user, userId }) => {
-  socket.join(roomId);
-
-  // Send chat history to this user
-  socket.emit("matched", { roomId, partner: "Stranger", history: roomHistory[roomId] || [] });
-
-  const joinMsg = { sender: "System", text: `${user} joined the chat`, userId: "system" };
-  roomHistory[roomId] = roomHistory[roomId] || [];
-  roomHistory[roomId].push(joinMsg);
-
-  socket.to(roomId).emit("message", joinMsg);
-});
+    // Emit to all clients in the room (including sender)
+    io.to(roomId).emit("message", msg);
+  });
 
   // --------------------- DISCONNECT ---------------------
   socket.on("disconnect", () => {
@@ -163,19 +194,28 @@ socket.on("joinRoom", ({ roomId, user, userId }) => {
 
     // Remove from waiting pool
     const index = waitingPool.findIndex((u) => u.socketId === socket.id);
-    if (index !== -1) waitingPool.splice(index, 1);
+    if (index !== -1) {
+      const removedUser = waitingPool.splice(index, 1)[0];
+      console.log(`Removed ${removedUser.user} from waiting pool. Pool size: ${waitingPool.length}`);
+    }
 
     // Notify rooms if socket was in any room
     for (const [roomId, sockets] of Object.entries(rooms)) {
       if (sockets.includes(socket.id)) {
-        socket.to(roomId).emit("message", { sender: "System", text: `A user has left the chat` });
+        socket.to(roomId).emit("message", { 
+          sender: "System", 
+          text: `Your chat partner has left the conversation.`, 
+          userId: "system" 
+        });
         rooms[roomId] = sockets.filter(id => id !== socket.id);
+        console.log(`User left room ${roomId}`);
       }
     }
   });
 });
 
 // ===================== START SERVER =====================
-server.listen(5000, () => {
-  console.log("🚀 Backend running at http://localhost:5000");
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`🚀 Backend running at http://localhost:${PORT}`);
 });

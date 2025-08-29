@@ -141,7 +141,7 @@ const Signup = () => {
 
           <div className="mt-6 text-center">
             <button
-              onClick={() => navigate("/guidelines?type=anonymous")}
+              onClick={() => navigate("/guidelines")}
               className="text-[hsl(var(--traumedy-text-muted))] hover:text-[hsl(var(--traumedy-text))] text-sm transition-colors"
             >
               Or proceed anonymously

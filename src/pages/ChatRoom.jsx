@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 
 // Initialize Socket.io client
-const socket = io("http://localhost:5000", { withCredentials: true });
+const socket = io("http://localhost:8080", { withCredentials: true });
 
 const ChatRoom = () => {
   const { roomId: paramRoomId } = useParams(); // optional if joining a specific room
@@ -60,7 +60,7 @@ const ChatRoom = () => {
 
     const msg = { roomId, sender: username, text: input };
     socket.emit("sendMessage", msg);
-    addMessage(msg);
+    // Don't add message locally - wait for server confirmation to avoid duplicates
     setInput("");
   };
 
@@ -73,7 +73,13 @@ const ChatRoom = () => {
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`p-2 rounded ${msg.sender === username ? "bg-blue-600" : msg.sender === "System" ? "bg-gray-500" : "bg-gray-800"}`}
+            className={`p-2 rounded ${
+              msg.sender === username
+                ? "bg-blue-600"
+                : msg.sender === "System"
+                ? "bg-gray-500"
+                : "bg-gray-800"
+            }`}
           >
             <strong>{msg.sender}: </strong> {msg.text}
           </div>
@@ -86,7 +92,7 @@ const ChatRoom = () => {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="flex-1 p-2 rounded bg-gray-700 text-white"
+          className="flex-1 p-2 rounded bg-white text-black border border-gray-500 placeholder:text-gray-400"
           placeholder="Type a message..."
           onKeyDown={(e) => {
             if (e.key === "Enter") sendMessage();
